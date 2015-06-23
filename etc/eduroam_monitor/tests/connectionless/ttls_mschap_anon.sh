@@ -9,28 +9,13 @@
 ###
 /usr/sbin/wpa_supplicant -Dnl80211 -iwlan0 -c /etc/eduroam_monitor/wpa_conf/eduroam-ttls-mschap-anon.conf -B
 
-# Wait 1min 30sec for Authentication to complete
-counter=0
-connected=0
-while [[ $counter -lt 18 ]] && [[ $connected == 0 ]]
-do                                                                                              
-	connection_status=$(/usr/sbin/wpa_cli status) 
-        if [[ $connection_status =~ Supplicant\ PAE\ state=AUTHENTICATED.* ]]                   
-        then                                                                                    
-                connected=1                                                                     
-                break                                                                           
-        else
-                sleep 5                                                      
-        fi                                                        
-        counter=$(( $counter + 1 ))                                          
-done
+sleep 10
 
 RESULT=false
 ERROR=""
 FAIL=0
 
 udhcpc -p /var/run/udhcpc-wlan0.pid -q -t 0 -i wlan0 -s /etc/eduroam_monitor/scripts/udhcpc -C eduProbe
-
 
 while read connection_status
 do
@@ -39,8 +24,7 @@ do
 		if [[ $connection_status =~ ^Supplicant\ PAE\ state=AUTHENTICATED.* ]]
 		then
 			RESULT=true
-		elif [[ $RESULT == false ]]
-		then
+		else
 			ERROR="$ERROR#PAE State#$(echo $connection_status | cut -d'=' -f2)"
 			FAIL=1
 		fi
@@ -49,8 +33,7 @@ do
 		if [[ $connection_status =~ .*Authorized$ ]]
 		then
 			RESULT=true
-		elif [[ $RESULT == false ]]
-		then
+		else
 			ERROR="$ERROR#suppPortStatus#$(echo $connection_status | cut -d'=' -f2)"
 			FAIL=1
 		fi
@@ -89,7 +72,7 @@ do
 	fi
 
 
-done < <(/usr/sbin/wpa_cli status )
+done < <(/usr/sbin/wpa_cli status)
 
 
 if [[ $FAIL == 1 ]]

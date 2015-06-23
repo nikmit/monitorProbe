@@ -9,21 +9,7 @@
 ###
 /usr/sbin/wpa_supplicant -Dnl80211 -iwlan0 -c /etc/eduroam_monitor/wpa_conf/eduroam-peap-mschap-rfc.conf -B
 
-# Wait 1min 30sec for Authentication to complete
-counter=0
-connected=0
-while [[ $counter -lt 18 ]] && [[ $connected == 0 ]]
-do                                                                                              
-	connection_status=$(/usr/sbin/wpa_cli status) 
-        if [[ $connection_status =~ Supplicant\ PAE\ state=AUTHENTICATED.* ]]                   
-        then                                                                                    
-                connected=1                                                                     
-                break                                                                           
-        else
-                sleep 5                                                      
-        fi                                                        
-        counter=$(( $counter + 1 ))                                          
-done
+sleep 10
 
 RESULT=false
 ERROR=""
@@ -86,7 +72,7 @@ do
 	fi
 
 
-done < <(/usr/sbin/wpa_cli status | sed 's/Pre-authentication\ EAPOL\ state\ machines\:.*//g')
+done < <(/usr/sbin/wpa_cli status)
 
 
 if [[ $FAIL == 1 ]]

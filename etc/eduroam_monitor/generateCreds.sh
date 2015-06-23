@@ -101,4 +101,5 @@ echo } >> /etc/eduroam_monitor/wpa_conf/eduroam-ttls-mschap-anon.conf
   echo anonymous_identity=\"$user@eduroam.ac.uk\" >> /etc/eduroam_monitor/wpa_conf/eduroam-ttls.conf       
   echo phase2=\"auth=EAP-MSCHAPV2\" >> /etc/eduroam_monitor/wpa_conf/eduroam-ttls.conf            
   echo } >> /etc/eduroam_monitor/wpa_conf/eduroam-ttls.conf  
- 
+  
+  
