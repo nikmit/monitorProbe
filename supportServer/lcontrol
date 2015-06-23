@@ -1,0 +1,129 @@
+#!/usr/bin/perl -w
+use strict;
+use Data::Dumper;
+# This script can be used to start|stop the socat listening processes for every port listed in monitored_tcp or monitored_udp
+# Please edit the arrays below to configure the monitored ports, ranges are acceptable e.g. 20-24 will expand to 20 21 22 23 24
+# port 22 exluded in testing
+my @monitored_tcp = qw (21 80 110);
+my @monitored_udp = qw (1194 7000-7007);
+my @protocols = qw (tcp udp);
+#my @monitored_tcp = qw (21 80 110 143 220 389 406 443 465 587 636 993 995 1194 1494 3128 3389 5900 8080);
+#my @monitored_udp = qw (1194 4500 5000-5110 7000-7007);
+
+# run with either 'start' or 'stop' as a parameter 
+my $updown=shift;
+my %monitored_all;
+
+if (($updown) and ($updown eq 'start')) {
+  &start;
+} elsif (($updown) and ($updown eq 'stop')) {
+  &stop;
+} else {
+  print "Usage: 'lcontrol start' starts the eduprobe listening processes, 'lcontrol stop' kills them\n";
+  exit 0;
+}
+
+
+sub get_ports {
+  my $arr;
+  foreach (@protocols) {
+  my $proto;
+    if ($_ eq 'tcp') {
+      $arr = \@monitored_tcp;
+      $proto = 'tcp';
+    } elsif ($_ eq 'udp') {
+      $arr = \@monitored_udp;
+      $proto = 'udp';
+    }
+    for my $p (@{$arr}) {
+      if (($p =~ /^(\d+)-(\d+)$/) and ($1 < $2)) {
+        my $low = $1;
+         my $high = $2;
+        while ($low <= $high) {
+	  $monitored_all{$proto}{$low}++;
+  	  $low++;
+        }
+      } elsif ($p =~ /^\d+$/) {
+        $monitored_all{$proto}{$p}++;
+      } else {
+        die "failed to parse configured port array at port $_";
+      }
+    }
+  }
+}
+  
+sub start { 
+  my $i = 0;
+  &get_ports;
+  &check_used_ports;
+  foreach my $proto (keys %monitored_all) {
+    P: foreach my $port (keys %{$monitored_all{$proto}}) {
+      if (system ("/usr/bin/socat ${proto}4-LISTEN:$port,fork EXEC:\"/srv/script/eduprobe/responder $proto $port\" &") == 0) {
+	$i++;
+        print "started listener for v4 $proto/$port\n";
+      } else {
+        print "$proto/$port is in use - continue? y/n\n";
+	while (<>) {
+	  if ($_ =~ /^[y\n]$/) {
+	    next P;
+	  } else {
+	    exit 1;
+	  }
+	}
+      }
+    }
+  }
+  if ($i > 0) {
+    print "started $i processes\n";
+  }
+}
+
+sub check_used_ports {
+  my %inuse;
+  my @openports = `/bin/netstat -nlp`;
+  my $clash = 0;
+  foreach (@openports) {
+    if ($_ =~ /^(tcp|udp)\s+\d+\s+\d+\s+[\d\.]+:(\d+)/) {
+      $inuse{$1}{$2}++;
+    }
+  }
+  for my $upr (keys %inuse) {				# for Used PRotocols
+    for my $cpr (keys %monitored_all) {			# and for Configured PRototcols
+      if ($upr eq $cpr) {				# if current selection matches (e.g. bot 'tcp')
+	for my $upt (keys %{$inuse{$upr}}) {		# loop through Used PorTs
+	  for my $cpt (keys %{$monitored_all{$cpr}}) {	# and Configured PorTs
+	    if ($upt eq $cpt) {				# if one is found that is configured to be monitored but is already used
+	      print "Port in use: $upr/$upt\n";		# print error and die
+	      $clash = 1;
+	    }
+	  }
+	}
+      }
+    }
+  }
+  if ($clash == 1) {
+    print "\nOne or more ports are configured for monitoring but are already in use, aborting.\nRun lcontrol down to kill any preexisting instances of the eduprobe listener.\n";
+    exit 1;
+  }
+}
+
+sub stop {
+  system("killall socat");
+#  my @ps = `/bin/ps ax`;
+#  my $i = 0;
+#  foreach (@ps) {
+#    if ($_ =~ /^([0-9]+).+?\/usr\/bin\/socat\s/) {
+#      my $pid = $1;
+#      $i++;
+#      #print "killing listener $pid\n";
+#      system ("kill $pid");
+#    } elsif ($_ =~ /^([0-9]+).+?nc\s\-l.+?\.\/responder$/) {
+#      my $pid = $1;
+#      #print "killing netcat $pid\n";
+#      system ("kill $pid");
+#    }
+#  }
+#  if ($i > 0) {
+#    print "killed $i processes\n";
+#  }
+}

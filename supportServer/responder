@@ -1,0 +1,20 @@
+#!/bin/bash
+
+proto=$1								# protocol and port provided locally at initialisation of listener
+port=$2
+
+read probeid								# read probe id as received by socat listener from probe
+
+#echo "probe: $probeid port:$port proto:$proto"
+
+if [[ "$probeid" =~ ^[0-9]{4}$ ]];					# verify format of supplied probe id
+then
+  salt=`grep "$probeid" "probedb.test" |awk '{print $2}'`		# get the locally stored salt for this probe ID
+#  echo "hashing $probeid:$proto:$port:$salt"
+  h=`echo "$probeid:$proto:$port:$salt" |sha1sum |awk '{print $1}'`	# compute sha1 hash
+  echo $h								# return hash to probe so it can verify it
+else
+  echo "failed to parse probe id: $probeid"
+  exit 1
+fi
+
