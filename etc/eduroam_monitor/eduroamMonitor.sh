@@ -217,6 +217,15 @@ then
 	###
 	for FILE in "${connect_test_files[@]}"                                                                                                                                                             
 	do                                                                                                                                                                                                    
+		if [[ ! $FILE =~ "_multi$" ]]
+		then
+			while read line
+			do
+				RESULTS+=($line)
+			done < <($FILE)
+			continue
+		fi
+
 		RAW_RESULT=""                                                                                                                                                                                 
 	        RAW_RESULT=$($FILE | awk 'END{print}')                                                                                                                                                        
 	        if [[ ! -z "$RAW_RESULT" ]]                                                                                                                                                                   
