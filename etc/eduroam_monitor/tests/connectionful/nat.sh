@@ -25,6 +25,6 @@ do
 		ERROR="$ERROR#Inside Address $echo_status"
 	fi
 	
-done < <(curl --cacert /etc/eduroam_monitor/ca.crt https://support.roaming.ja.net/cgi-bin/probe/ip_echo)
+done < <(curl --cacert /etc/eduroam_monitor/ca.crt --capath /etc/eduroam_monitor https://support.roaming.ja.net/cgi-bin/probe/ip_echo)
 
 echo "test=nat&result=$RESULT&message=$ERROR&time=$(date +%Y%m%d)_$(date +%H%M%S)"
