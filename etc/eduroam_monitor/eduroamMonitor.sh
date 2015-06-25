@@ -323,6 +323,7 @@ then
 			######
 			# send test result to server with HTTP GET
 			######
+# UNCOMMENT THIS TO ENABLE RESULT SUBMISSION
 #			RESPONSE=$(curl --cacert /etc/eduroam_monitor/ca.crt --capath /etc/eduroam_monitor $GET_STRING)
 			
 #			echo "$RESPONSE"
