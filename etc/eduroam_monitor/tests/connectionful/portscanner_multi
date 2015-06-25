@@ -8,15 +8,15 @@
 
 # Configure monitored ports
 protocols=('tcp' 'udp')
-#monitored_tcp=(21 22 80 110 143 220 389 406 443 465 587 636 993 995 1194 1494 3128 3389 5900 8080)
-#monitored_udp=(123 1194 4500 5000-5110 7000-7007)
+monitored_tcp=(21 22 80 110 143 220 389 406 443 465 587 636 993 995 1194 1494 3128 3389 5900 8080)
+monitored_udp=(123 1194 4500 5000-5110 7000-7007)
 target='158.125.10.31'				# ip of the target server hosting the listening processes
 id=$(cat /etc/eduroam_monitor/probeId)
 salt=$(cat /etc/eduroam_monitor/salt |sed '{s/[: -]//g}' |awk '{print tolower($0)}')	# this should take : and - separated MACs
 
 ## settings used for testing			#
-monitored_tcp=(21 80 110)			#
-monitored_udp=(1194 7005-7012)			#
+#monitored_tcp=(21 80 110)			#
+#monitored_udp=(1194 7005-7012)			#
 #target='127.0.0.1'				# 
 #id='1045'					# 
 #salt='c04a00cc8406'				# 
@@ -32,48 +32,17 @@ function scan {
       range_end="${BASH_REMATCH[2]}"
       if [[ $range_start -lt $range_end ]] ;
       then
-#       ports_total=$(($range_end - $range_start + 1))
-#       ports_closed=()
-#	ports_open=()
-#	error=''
         for ((i=$range_start; i <= $range_end; i++))
         do
-#	  echo "testing '$id |$cmd $i'"
 	  rhash=$(echo $id |$cmd $i 2> /dev/null & sleep 1 ; kill $! 2> /dev/null)
-	  #echo "verifying hash:"
-	  #echo "provided  : $rhash"
 	  lhash=`echo "$id:$proto:$i:$salt" |sha1sum |awk '{print $1}'`
-	  #echo "calculated: $lhash"
 	  if [[ $rhash == $lhash ]]
 	  then
 	    echo "test=$proto:$i&result=true&message=target_$target&time=$(date +%Y%m%d)_$(date +%H%M%S)"
-#	    ports_open+=($i)
 	  else
 	    echo "test=$proto:$i&result=false&message=target_$target&time=$(date +%Y%m%d)_$(date +%H%M%S)"
-#	    ports_closed+=($i)
 	  fi
 	done
-## Local result analysis causes 'read line' to timeout before all output has been received
-#	if [[ ${#ports_closed[@]} -lt ${#ports_open[@]} ]] ;then
-#	  if [[ ${#ports_closed[@]} -le 5 ]] ;then
-#	    error="ports closed: ${ports_closed[@]:0}"
-#	  else
-#	    error="ports closed > 5 > ports open"
-#	  fi
-#	else
-#	  if [[ ${#ports_open[@]} -le 4 ]] ;then
-#            error="ONLY ports open: ${ports_open[@]:0}"
-#          else
-#            error="ports open > 5 > ports closed"
-#       fi
-#	fi
-#	if [[ ${#ports_closed[@]} -eq 0 ]] ;then
-#	  echo "test=$proto:$port&result=true&message=&time=$(date +%Y%m%d)_$(date +%H%M%S)"
-#	elif [[ ${#ports_open[@]} -eq 0 ]] ;then
-#	  echo "test=$proto:$port&result=false&message='All ports in range closed'&time=$(date +%Y%m%d)_$(date +%H%M%S)"
-#	else
-#	  echo "test=$proto:$port&result=false&message='$error'&time=$(date +%Y%m%d)_$(date +%H%M%S)"
-#	fi
       else
         echo "Range starts with value larger than the one it ends with"
         exit 1
@@ -81,17 +50,12 @@ function scan {
     # if not a range just test it
     elif [[ $port =~ ^[0-9]+$ ]]
     then
-#      echo "testing '$id |$cmd $port'"
       rhash=$(echo $id |$cmd $port 2> /dev/null & sleep 1 ; kill $! 2> /dev/null)
-      #echo "verifying hash: $rhash"
       lhash=`echo "$id:$proto:$port:$salt" |sha1sum |awk '{print $1}'`
-      #echo "lhash: $lhash"
       if [[ $rhash == $lhash ]]
       then
-#	echo "$proto/$port - OK"
 	echo "test=$proto:$port&result=true&message=target_$target&time=$(date +%Y%m%d)_$(date +%H%M%S)"
       else
-#	echo "$proto/$port - FAIL"
 	echo "test=$proto:$port&result=false&message=target_$target&time=$(date +%Y%m%d)_$(date +%H%M%S)"
       fi
     else 
@@ -118,39 +82,6 @@ do
     scan
   fi
 done
-
-# current result delivery format
-#echo "test=nat&result=$RESULT&message=$ERROR&time=$(date +%Y%m%d)_$(date +%H%M%S)"
-
-
-
-## Eduroam tech spec requirements:                                                                                                          
-## Scannable ports                                                                                                                          
-#45.3. IPSec NAT traversal:                     UDP/4500 egress and established.                                                            
-#45.4. Cisco IPSec NAT traversal:               UDP/10000; TCP/10000 egress and established.                                                
-#45.6. OpenVPN:                                 UDP/1194; TCP/1194 egress and established;                                                  
-#                                               UDP/5000-5110 egress and established                                                        
-#45.7. NTP:                                     UDP/123 egress and established                                                              
-#45.8. SSH:                                     TCP/22 egress and established.                                                              
-#45.9. HTTP:                                    TCP/80 egress and established.                                                              
-#45.10. HTTPS:                                  TCP/443 egress and established.                                                             
-#45.11. LDAP:                                   TCP/389 egress and established.
-#45.12. LDAPS:                                  TCP/636 egress and established.
-#45.13. IMSP:                                   TCP/406 egress and established.
-#45.14. IMAP4:                                  TCP/143 egress and established.
-#45.15. IMAP3:                                  TCP/220 egress and established.
-#45.16. IMAPS:                                  TCP/993 egress and established.
-#45.17. POP:                                    TCP/110 egress and established.
-#45.18. POP3S:                                  TCP/995 egress and established.
-#45.19. Passive (S)FTP:                         TCP/21 egress and established.
-#45.20. SMTPS:                                  TCP/465 egress and established.
-#45.21. Message submission:                     TCP/587 egress and established.
-#45.22. RDP:                                    TCP/3389 egress and established.
-#45.23. VNC:                                    TCP/5900 egress and established.
-#45.24. Citrix:                                 TCP/1494 egress and established.
-#45.25. AFS:                                    UDP/7000 through UDP/7007 inclusive egress and established.
-#45.29. SQUID Proxy:                            TCP/3128 egress and established
-#45.30. HTTP Proxy:                             TCP/8080 egress and established
 
 # Ports/services requiring full application implementation for accurate detection
 #45.5. PPTP:                                    IP protocol 47 (GRE) egress and established; 
