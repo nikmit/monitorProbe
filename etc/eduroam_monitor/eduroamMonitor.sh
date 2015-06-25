@@ -1,5 +1,6 @@
 #!/bin/bash
 
+tests_path="/etc/eduroam_monitor/tests/"
 
 function getScan() {
 
@@ -8,17 +9,24 @@ function getScan() {
         # Then connect to eduroam with working credentials
         #######
 
-        wpa_cli logoff
-        wpa_cli terminate
+	if [ -a /var/run/wpa_supplicant-wlan0 ]
+	then
+		/usr/sbin/wpa_cli -p /var/run/wpa_supplicant-wlan0 logoff  
+		/usr/sbin/wpa_cli -p /var/run/wpa_supplicant-wlan0 terminate  
+	fi
+
         /usr/sbin/wpa_supplicant -Dnl80211 -iwlan0 -c /etc/eduroam_monitor/wpa_conf/eduroam-peap.conf -B
 
+	echo "waiting 8s for wpa_supplicant"
         sleep 8
 
-        local scan=$(/usr/sbin/wpa_cli scan);
+        local scan=$(/usr/sbin/wpa_cli scan)
+	echo "scan=$scan"
 
         # Wait for APs to beacon
         sleep 5
 
+	echo "scan=$scan"
 
         if [[ $scan =~ OK$ ]]
         then
@@ -38,8 +46,11 @@ function getConnection() {
 	# Then connect to eduroam with working credentials
 	#######
 
-	wpa_cli logoff
-        wpa_cli terminate
+	if [ -a /var/run/wpa_supplicant-wlan0 ]
+	then
+		/usr/sbin/wpa_cli -p /var/run/wpa_supplicant-wlan0 logoff  
+		/usr/sbin/wpa_cli -p /var/run/wpa_supplicant-wlan0 terminate  
+	fi
         /usr/sbin/wpa_supplicant -Dnl80211 -iwlan0 -c /etc/eduroam_monitor/wpa_conf/eduroam-peap.conf -B
 	sleep 2
 
@@ -57,7 +68,8 @@ function getConnection() {
 			break
 		elif [[ $connection_status =~ Supplicant\ PAE\ state=.* ]]
 		then
-			sleep 5
+			echo "waiting 2s for connection $counter"
+			sleep 2
 		fi
 		counter=$(( $counter + 1 ))
 	done
@@ -83,6 +95,7 @@ function getConnection() {
 			ipaddr='OK'
 			break
 		else
+			echo "waiting 2s for IP $counter"
 			sleep=2
 		fi
 		counter=$(( $counter + 1 ))
@@ -95,16 +108,17 @@ function getConnection() {
 
 
 ## Allow bash completion                                                                                                                                                                              
-if [ ! -L "/dev/fd" ]                                                                                                                                                                                 
-then                                                                                                                                                                                                  
-	ln -s /proc/self/fd /dev/fd                                                                                                                                                                   
-fi
+#if [ ! -L "/dev/fd" ]                                                                                                                                                                                 
+#then                                                                                                                                                                                                  
+#	ln -s /proc/self/fd /dev/fd                                                                                                                                                                   
+#fi
 
 #####
 # Kill OpenWRT wpa_supplicant
 #####
 if [ -a /var/run/wpa_supplicant-wlan0 ]
 then
+	/usr/sbin/wpa_cli -p /var/run/wpa_supplicant-wlan0 logoff 
 	/usr/sbin/wpa_cli -p /var/run/wpa_supplicant-wlan0 terminate  
 fi
 
@@ -121,30 +135,6 @@ fi
 #	date -s "2013-11-07 13:00"
 #fi
 
-######
-# location of the test scripts
-######
-function getScripts() {
-	local array=$1
-	local i=0
-
-	while read line
-	do
-    		eval $array[ $i ]="$2/$line"        
-    		(( i++ ))
-	done < <(ls $2)
-}
-
-  ### Test which require eduroam disconnected e.g. auth test ###
-getScripts no_connect_test_files "/etc/eduroam_monitor/tests/connectionless"
-
-  ### Test which require eduroam connection e.g. port tests ###
-getScripts connect_test_files "/etc/eduroam_monitor/tests/connectionful"
-
-  ### Test which which require wpa_supplicant in scan mode e.g. ssid test ###
-getScripts scan_test_files "/etc/eduroam_monitor/tests/scan"
-
-      
 ##############################################
 # Run each test                              #
 # Store result in array for reporting later  #
@@ -161,10 +151,9 @@ then
         #
         # if get scan run tests
         #
-	for FILE in "${scan_test_files[@]}"
+	for FILE in $(/bin/ls "${tests_path}scan")
 	do
-		RAW_RESULT=""
-		RAW_RESULT=$($FILE | awk 'END{print}')
+		RAW_RESULT=$(${tests_path}scan/$FILE | awk 'END{print}')
 		if [[ ! -z "$RAW_RESULT" ]]
 		then
 			RESULTS=("${RESULTS[@]}" "$RAW_RESULT")
@@ -172,17 +161,23 @@ then
 	done
 	
 	# Disconnect and tidy up
-	wpa_cli logoff
-	wpa_cli terminate
+	
+        if [ -a /var/run/wpa_supplicant-wlan0 ]
+        then
+                /usr/sbin/wpa_cli -p /var/run/wpa_supplicant-wlan0 logoff
+                /usr/sbin/wpa_cli -p /var/run/wpa_supplicant-wlan0 terminate
+        fi
+
+else
+	echo "scan failed, skipping scan tests - HAS_SCAN=$HAS_SCAN"
 fi 
 
 ###
 # test which require eduroam to be disconnected
 ###
-for FILE in "${no_connect_test_files[@]}"
+for FILE in $(/bin/ls "${tests_path}connectionless")
 do
-	RAW_RESULT=""
-	RAW_RESULT=$($FILE | awk 'END{print}')
+	RAW_RESULT=$(${tests_path}connectionless/$FILE | awk 'END{print}')
 	if [[ ! -z "$RAW_RESULT" ]]
 	then
 		RESULTS=("${RESULTS[@]}" "$RAW_RESULT")
@@ -215,19 +210,22 @@ then
 	###
 	# tests which require an eduroam connection
 	###
-	for FILE in "${connect_test_files[@]}"                                                                                                                                                             
-	do                                                                                                                                                                                                    
-		if [[ ! $FILE =~ "_multi$" ]]
+	for FILE in $(/bin/ls "${tests_path}connectionful")                                                                                                                                                            
+	do                                                                                                                               
+		if [[ $FILE =~ "_multi" ]]
 		then
 			while read line
 			do
-				RESULTS+=($line)
-			done < <($FILE)
+				if [[ ! -z $line ]]
+				then
+					RESULTS+=($line)
+				fi
+
+			done < <(${tests_path}connectionful/$FILE)
 			continue
 		fi
 
-		RAW_RESULT=""                                                                                                                                                                                 
-	        RAW_RESULT=$($FILE | awk 'END{print}')                                                                                                                                                        
+	        RAW_RESULT=$(${tests_path}connectionful/$FILE | awk 'END{print}')                                                                                                                                                        
 	        if [[ ! -z "$RAW_RESULT" ]]                                                                                                                                                                   
 	        then                                                                                                                                                                                          
 	        	RESULTS=("${RESULTS[@]}" "$RAW_RESULT")                                                                                                                                               
@@ -332,12 +330,19 @@ then
 		fi
 	done
 	
+else
+
+	echo "no connection detected, skipping connectionfull tests and results submission: HAS_CONNECT=$HAS_CONNECT"
+
 fi
 
 ####
 # disconnect from eduroam
 ####
-wpa_cli logoff
-wpa_cli terminate
+if [ -a /var/run/wpa_supplicant-wlan0 ]
+then
+	/usr/sbin/wpa_cli -p /var/run/wpa_supplicant-wlan0 logoff  
+	/usr/sbin/wpa_cli -p /var/run/wpa_supplicant-wlan0 terminate  
+fi
 
 
