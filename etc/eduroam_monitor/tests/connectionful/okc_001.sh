@@ -31,7 +31,7 @@ then
 	/etc/eduroam_monitor/generateCreds.sh $USERNAME $PASSWORD
 
         ### Check configs are sane
-	$PASS1="$(grep 'password' /etc/eduroam_monitor/wpa_conf/eduroam-peap.conf | cut -d'"' -f 2)"
+	PASS1="$(grep 'password' /etc/eduroam_monitor/wpa_conf/eduroam-peap.conf | cut -d'"' -f 2)"
 	if [[ $PASS1 != $PASSWORD ]]
 	then
 		cp /etc/eduroam_monitor/wpa_conf/old/* /etc/eduroam_monitor/wpa_conf
