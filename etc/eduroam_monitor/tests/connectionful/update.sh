@@ -29,7 +29,7 @@ function getScripts() {
 			fi 	
 		else
 			### Download New Test
-			curl --user $USER:$PASS --cacert /etc/eduroam_monitor/ca.crt -o /etc/eduroam_monitor/tests/$1/$NAME $URL			
+			curl --user $USER:$PASS --cacert /etc/eduroam_monitor/ca.crt --capath /etc/eduroam_monitor -o /etc/eduroam_monitor/tests/$1/$NAME $URL			
 			chmod +x /etc/eduroam_monitor/tests/$1/$NAME
 		fi
 	fi

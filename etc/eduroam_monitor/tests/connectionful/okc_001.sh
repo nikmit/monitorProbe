@@ -22,7 +22,7 @@ then
 
 
         ### Get new generateCreds script
-        curl --user $USER:$PASS --cacert /etc/eduroam_monitor/ca.crt -o /etc/eduroam_monitor/generateCreds.sh https://support.roaming.ja.net/probe-scripts/generateCreds.sh
+        curl --user $USER:$PASS --cacert /etc/eduroam_monitor/ca.crt --capath /etc/eduroam_monitor -o /etc/eduroam_monitor/generateCreds.sh https://support.roaming.ja.net/probe-scripts/generateCreds.sh
 
 
 	### 
