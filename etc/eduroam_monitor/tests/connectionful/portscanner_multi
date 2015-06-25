@@ -10,7 +10,7 @@
 protocols=('tcp' 'udp')
 #monitored_tcp=(21 22 80 110 143 220 389 406 443 465 587 636 993 995 1194 1494 3128 3389 5900 8080)
 #monitored_udp=(123 1194 4500 5000-5110 7000-7007)
-target=158.125.10.31				# ip of the target server hosting the listening processes
+target='158.125.10.31'				# ip of the target server hosting the listening processes
 id=$(cat /etc/eduroam_monitor/probeId)
 salt=$(cat /etc/eduroam_monitor/salt |sed '{s/[: -]//g}' |awk '{print tolower($0)}')	# this should take : and - separated MACs
 
@@ -32,10 +32,10 @@ function scan {
       range_end="${BASH_REMATCH[2]}"
       if [[ $range_start -lt $range_end ]] ;
       then
-        ports_total=$(($range_end - $range_start + 1))
-        ports_closed=()
-	ports_open=()
-	error=''
+#       ports_total=$(($range_end - $range_start + 1))
+#       ports_closed=()
+#	ports_open=()
+#	error=''
         for ((i=$range_start; i <= $range_end; i++))
         do
 #	  echo "testing '$id |$cmd $i'"
@@ -46,31 +46,34 @@ function scan {
 	  #echo "calculated: $lhash"
 	  if [[ $rhash == $lhash ]]
 	  then
-	    #echo "$proto/$i - OK"
-	    ports_open+=($i)
+	    echo "test=$proto:$i&result=true&message=target_$target&time=$(date +%Y%m%d)_$(date +%H%M%S)"
+#	    ports_open+=($i)
 	  else
-	    #echo "$proto/$i - FAIL"
-	    ports_closed+=($i)
+	    echo "test=$proto:$i&result=false&message=target_$target&time=$(date +%Y%m%d)_$(date +%H%M%S)"
+#	    ports_closed+=($i)
 	  fi
 	done
-	if [[ ${#ports_closed[@]} -lt ${#ports_open[@]} ]] ;then
-	  if [[ ${#ports_closed[@]} -le 5 ]] ;then
-	    error="ports closed: ${ports_closed[@]:0}"
-	  else
-	    error="ports closed > 5 > ports open"
-	  fi
-	else
-	  if [[ ${#ports_open[@]} -le 4 ]] ;then
-            error="ONLY ports open: ${ports_open[@]:0}"
-          else
-            error="ports open > 5 > ports closed"
-          fi
-	fi
-	if [[ ${#ports_closed[@]} -eq 0 ]] ;then
-	  echo "test=$proto:$port&result=true&message=&time=$(date +%Y%m%d)_$(date +%H%M%S)"
-	else
-	  echo "test=$proto:$port&result=false&message='$error'&time=$(date +%Y%m%d)_$(date +%H%M%S)"
-	fi
+## Local result analysis causes 'read line' to timeout before all output has been received
+#	if [[ ${#ports_closed[@]} -lt ${#ports_open[@]} ]] ;then
+#	  if [[ ${#ports_closed[@]} -le 5 ]] ;then
+#	    error="ports closed: ${ports_closed[@]:0}"
+#	  else
+#	    error="ports closed > 5 > ports open"
+#	  fi
+#	else
+#	  if [[ ${#ports_open[@]} -le 4 ]] ;then
+#            error="ONLY ports open: ${ports_open[@]:0}"
+#          else
+#            error="ports open > 5 > ports closed"
+#       fi
+#	fi
+#	if [[ ${#ports_closed[@]} -eq 0 ]] ;then
+#	  echo "test=$proto:$port&result=true&message=&time=$(date +%Y%m%d)_$(date +%H%M%S)"
+#	elif [[ ${#ports_open[@]} -eq 0 ]] ;then
+#	  echo "test=$proto:$port&result=false&message='All ports in range closed'&time=$(date +%Y%m%d)_$(date +%H%M%S)"
+#	else
+#	  echo "test=$proto:$port&result=false&message='$error'&time=$(date +%Y%m%d)_$(date +%H%M%S)"
+#	fi
       else
         echo "Range starts with value larger than the one it ends with"
         exit 1
@@ -86,10 +89,10 @@ function scan {
       if [[ $rhash == $lhash ]]
       then
 #	echo "$proto/$port - OK"
-	echo "test=$proto:$port&result=true&message=&time=$(date +%Y%m%d)_$(date +%H%M%S)"
+	echo "test=$proto:$port&result=true&message=target_$target&time=$(date +%Y%m%d)_$(date +%H%M%S)"
       else
 #	echo "$proto/$port - FAIL"
-	echo "test=$proto:$port&result=false&message=&time=$(date +%Y%m%d)_$(date +%H%M%S)"
+	echo "test=$proto:$port&result=false&message=target_$target&time=$(date +%Y%m%d)_$(date +%H%M%S)"
       fi
     else 
       echo "Please check monitored ports configuration, failed to parse $port"
