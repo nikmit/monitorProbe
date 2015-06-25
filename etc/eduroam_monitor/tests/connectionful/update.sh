@@ -23,7 +23,7 @@ function getScripts() {
 			if [[ "$(sha1sum /etc/eduroam_monitor/tests/$1/$NAME | awk -F" " '{print $1}')" != $HASH ]]
 			then
 				### Download script and overwrite existing
-				curl --user $USER:$PASS --cacert /etc/eduroam_monitor/ca.crt -o /etc/eduroam_monitor/tests/$1/$NAME $URL 
+				curl --user $USER:$PASS --cacert /etc/eduroam_monitor/ca.crt --capath /etc/eduroam_monitor -o /etc/eduroam_monitor/tests/$1/$NAME $URL 
 				chmod +x /etc/eduroam_monitor/tests/$1/$NAME
 	
 			fi 	
@@ -45,5 +45,5 @@ do
 	getScripts connectionful
 	getScripts scan
 	
-done < <(curl --cacert /etc/eduroam_monitor/ca.crt https://support.roaming.ja.net/cgi-bin/probe/update)
+done < <(curl --cacert /etc/eduroam_monitor/ca.crt --capath /etc/eduroam_monitor https://support.roaming.ja.net/cgi-bin/probe/update)
 

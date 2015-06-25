@@ -323,7 +323,7 @@ then
 			######
 			# send test result to server with HTTP GET
 			######
-#			RESPONSE=$(curl --cacert /etc/eduroam_monitor/ca.crt $GET_STRING)
+#			RESPONSE=$(curl --cacert /etc/eduroam_monitor/ca.crt --capath /etc/eduroam_monitor $GET_STRING)
 			
 #			echo "$RESPONSE"
 			
